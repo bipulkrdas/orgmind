@@ -1,0 +1,327 @@
+# Implementation Plan
+
+- [x] 1. Create database migrations for graphs and graph memberships
+  - Create migration file `002_add_graphs_table.up.sql` with graphs table including creator_id, zep_graph_id, name, description, document_count
+  - Create migration file for graph_memberships table with graph_id, user_id, role, and unique constraint
+  - Add indexes on creator_id, zep_graph_id, graph_id, user_id, and composite (user_id, graph_id)
+  - Create down migration files for rollback
+  - Update documents table migration to add graph_id column with foreign key to graphs
+  - _Requirements: 10.1, 10.2, 14.1_
+
+- [x] 2. Implement Graph and GraphMembership models
+  - Create Graph model struct with ID, CreatorID, ZepGraphID, Name, Description, DocumentCount, timestamps
+  - Create GraphMembership model struct with ID, GraphID, UserID, Role, CreatedAt
+  - Add JSON tags in camelCase and db tags in snake_case
+  - Create CreateGraphRequest and UpdateGraphRequest structs with validation tags
+  - Create AddMemberRequest struct for adding members to graphs
+  - _Requirements: 10.1, 14.1_
+
+- [x] 3. Implement GraphRepository with CRUD and membership operations
+  - [x] 3.1 Implement basic graph CRUD methods
+    - Write Create method to insert graph record using sqlx
+    - Write GetByID method to fetch graph by ID
+    - Write GetByZepGraphID method to fetch graph by Zep graph ID
+    - Write Update method to update graph name and description
+    - Write Delete method to remove graph (cascade deletes memberships and documents)
+    - _Requirements: 10.1, 10.2, 10.4_
+  - [x] 3.2 Implement graph membership methods
+    - Write CreateMembership method to insert membership record
+    - Write DeleteMembership method to remove a member from graph
+    - Write GetMembership method to fetch membership by graph_id and user_id
+    - Write ListMembersByGraphID method to get all members of a graph
+    - Write IsMember method to check if user is member of graph
+    - _Requirements: 14.1, 14.2, 14.3_
+  - [x] 3.3 Implement graph listing with membership join
+    - Write ListByUserID method that joins graphs and graph_memberships tables
+    - Filter results by user_id in graph_memberships table
+    - Return all graphs where user is a member
+    - _Requirements: 14.3, 15.1, 15.3_
+  - [x] 3.4 Implement document count management
+    - Write UpdateDocumentCount method to increment/decrement count
+    - Use atomic SQL UPDATE with delta parameter
+    - _Requirements: 13.2, 13.3_
+
+- [x] 4. Implement GraphService with business logic
+  - [x] 4.1 Implement graph CRUD operations
+    - Write Create method that creates graph in Zep, saves to DB, and creates owner membership
+    - Write GetByID method with membership verification
+    - Write ListByUserID method to return user's graphs
+    - Write Update method with creator verification
+    - Write Delete method with creator verification that deletes from Zep and DB
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 4.4, 4.5_
+  - [x] 4.2 Implement membership management operations
+    - Write AddMember method with creator verification
+    - Write RemoveMember method with creator verification
+    - Write ListMembers method with membership verification
+    - Write IsMember method to check membership
+    - _Requirements: 14.1, 14.2_
+  - [x] 4.3 Implement verification helper methods
+    - Write verifyMembership method to check if user is member of graph
+    - Write verifyCreator method to check if user is creator of graph
+    - Return appropriate errors for unauthorized access
+    - _Requirements: 14.4, 14.5, 15.2_
+  - [x] 4.4 Implement document count helpers
+    - Write IncrementDocumentCount method
+    - Write DecrementDocumentCount method
+    - _Requirements: 13.2, 13.3_
+
+- [x] 5. Refactor ZepService to use graph IDs
+  - [x] 5.1 Add CreateGraph method to Zep service
+    - Implement CreateGraph method using Zep Go SDK
+    - Accept graphID, name, and description parameters
+    - Return zepGraphID assigned by Zep Cloud
+    - Add retry logic for transient failures
+    - _Requirements: 11.3_
+  - [x] 5.2 Add DeleteGraph method to Zep service
+    - Implement DeleteGraph method using Zep Go SDK
+    - Accept zepGraphID parameter
+    - Handle errors gracefully
+    - _Requirements: 11.4_
+  - [x] 5.3 Update AddMemory method to accept graphID
+    - Modify AddMemory signature to include graphID parameter
+    - Use graphID when adding data to Zep Cloud
+    - Update all callers to pass graphID
+    - _Requirements: 11.1_
+  - [x] 5.4 Update GetGraph method to accept graphID
+    - Modify GetGraph signature to include graphID parameter
+    - Use graphID when querying Zep Cloud for graph data
+    - Update all callers to pass graphID
+    - _Requirements: 11.2_
+  - [x] 5.5 Update SearchMemory method to accept graphID
+    - Modify SearchMemory signature to include graphID parameter
+    - Use graphID when searching Zep Cloud
+    - Update all callers to pass graphID
+    - _Requirements: 11.1, 11.2_
+
+- [x] 6. Update DocumentService to associate documents with graphs
+  - [x] 6.1 Update CreateFromEditor method
+    - Add graphID parameter to method signature
+    - Verify graph membership before creating document
+    - Store graphID in document record
+    - Call GraphService.IncrementDocumentCount after successful creation
+    - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
+  - [x] 6.2 Update CreateFromFile method
+    - Add graphID parameter to method signature
+    - Verify graph membership before creating document
+    - Store graphID in document record
+    - Call GraphService.IncrementDocumentCount after successful creation
+    - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
+  - [x] 6.3 Implement ListGraphDocuments method
+    - Create new method to list documents for a specific graph
+    - Query documents table filtered by graph_id
+    - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
+  - [x] 6.4 Implement UpdateDocument method
+    - Create method to update document content
+    - Verify user is member of document's graph
+    - Re-process content through ProcessingService and ZepService
+    - _Requirements: 16.4, 16.5_
+  - [x] 6.5 Implement DeleteDocument method
+    - Create method to delete document
+    - Verify user is member of document's graph
+    - Call GraphService.DecrementDocumentCount
+    - Remove from storage and database
+    - _Requirements: 13.3_
+
+- [x] 7. Create GraphHandler with HTTP endpoints
+  - [x] 7.1 Implement graph CRUD handlers
+    - Write POST /api/graphs handler to create graph
+    - Write GET /api/graphs handler to list user's graphs
+    - Write GET /api/graphs/:id handler to get graph details
+    - Write PUT /api/graphs/:id handler to update graph
+    - Write DELETE /api/graphs/:id handler to delete graph
+    - Extract userID from JWT token in all handlers
+    - _Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 4.4, 4.5_
+  - [x] 7.2 Implement membership management handlers
+    - Write POST /api/graphs/:id/members handler to add member
+    - Write DELETE /api/graphs/:id/members/:userId handler to remove member
+    - Write GET /api/graphs/:id/members handler to list members
+    - Verify creator permissions for add/remove operations
+    - _Requirements: 14.1, 14.2_
+  - [x] 7.3 Implement graph-specific data handlers
+    - Write GET /api/graphs/:id/documents handler to list graph documents
+    - Write GET /api/graphs/:id/visualization handler to get graph visualization
+    - Verify membership before returning data
+    - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 8.1, 8.2, 8.3, 8.4, 8.5, 9.1, 9.2, 9.3, 9.4, 9.5_
+
+- [x] 8. Update DocumentHandler to accept graph context
+  - Update POST /api/documents/editor handler to accept graphId in request body
+  - Update POST /api/documents/upload handler to accept graphId in request body
+  - Add PUT /api/documents/:id handler for updating documents
+  - Add DELETE /api/documents/:id handler for deleting documents
+  - Verify graph membership in all document handlers
+  - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 7.1, 7.2, 7.3, 7.4, 7.5_
+
+- [x] 9. Update router with new graph routes
+  - Add graph routes group under authenticated routes
+  - Register all graph CRUD endpoints
+  - Register membership management endpoints
+  - Register graph-specific data endpoints
+  - Ensure JWT authentication middleware is applied
+  - _Requirements: 12.1, 12.2_
+
+- [x] 10. Create data migration script for existing users
+  - Write migration script to create default graph for users with documents
+  - Create graph in Zep Cloud for each user
+  - Insert graph record with creator_id
+  - Create owner membership for each user
+  - Update existing documents to reference new graph
+  - Update document count for each graph
+  - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 14.1_
+
+- [x] 11. Implement frontend TypeScript types and API client
+  - [x] 11.1 Create TypeScript type definitions
+    - Define Graph interface with creatorId, zepGraphId, name, description, documentCount
+    - Define GraphMembership interface with graphId, userId, role
+    - Define CreateGraphRequest and UpdateGraphRequest interfaces
+    - Define AddMemberRequest interface
+    - Update Document interface to include graphId field
+    - _Requirements: 1.4, 2.5, 5.5, 15.5_
+  - [x] 11.2 Implement graph API client functions
+    - Create listGraphs function to fetch user's graphs
+    - Create createGraph function to create new graph
+    - Create getGraph function to fetch graph details
+    - Create updateGraph function to update graph metadata
+    - Create deleteGraph function to delete graph
+    - _Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 4.4, 4.5_
+  - [x] 11.3 Implement membership API client functions
+    - Create addMember function to add member to graph
+    - Create removeMember function to remove member from graph
+    - Create listMembers function to get graph members
+    - _Requirements: 14.1, 14.2_
+  - [x] 11.4 Update document API client functions
+    - Update submitEditorContent to accept graphId parameter
+    - Update uploadFile to accept graphId parameter
+    - Create listGraphDocuments function to fetch documents for a graph
+    - Create updateDocument function to update document content
+    - Create deleteDocument function to delete document
+    - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 8.1, 8.5_
+  - [x] 11.5 Implement graph visualization API client
+    - Create getGraphVisualization function to fetch graph data
+    - Accept graphId parameter
+    - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
+
+- [x] 12. Create graphs list page and components
+  - [x] 12.1 Create GraphsList component
+    - Build component to display grid of graph cards
+    - Add create new graph button
+    - Show empty state when no graphs exist
+    - Add loading state during fetch
+    - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
+  - [x] 12.2 Create GraphCard component
+    - Display graph name, description, and document count
+    - Show creation date
+    - Add edit and delete action buttons
+    - Make card clickable to navigate to graph detail
+    - Show indicator if user is creator vs member
+    - _Requirements: 1.4, 12.1, 15.5_
+  - [x] 12.3 Create CreateGraphModal component
+    - Build modal with form for name and description
+    - Add form validation
+    - Call createGraph API on submit
+    - Show success/error messages
+    - Refresh graphs list on success
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
+  - [x] 12.4 Create EditGraphModal component
+    - Build modal with form pre-populated with current values
+    - Add form validation
+    - Call updateGraph API on submit
+    - Show success/error messages
+    - Refresh graphs list on success
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+  - [x] 12.5 Create DeleteGraphDialog component
+    - Build confirmation dialog with warning message
+    - Call deleteGraph API on confirm
+    - Show success/error messages
+    - Refresh graphs list on success
+    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
+  - [x] 12.6 Create graphs list page
+    - Create page at /app/(auth)/graphs/page.tsx
+    - Fetch graphs on page load
+    - Render GraphsList component
+    - Handle create/edit/delete actions
+    - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 15.1, 15.2, 15.3_
+
+- [x] 13. Create graph detail page and components
+  - [x] 13.1 Create GraphDetail component
+    - Display graph name and description at top
+    - Show document count
+    - Add "Add Document" button
+    - Include section for documents list
+    - Include section for graph visualizer
+    - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 12.4_
+  - [x] 13.2 Create DocumentsList component
+    - Display list of documents with name, type icon, date, size
+    - Show document type indicator (user-created vs uploaded)
+    - Make documents clickable to view/edit
+    - Show empty state when no documents
+    - _Requirements: 5.5, 8.1, 8.5, 16.1_
+  - [x] 13.3 Create AddDocumentModal component
+    - Build modal with two large option buttons
+    - Add "Create Document" option with icon and description
+    - Add "Upload File" option with icon and description
+    - Navigate to editor page on "Create Document" selection
+    - Navigate to upload page on "Upload File" selection
+    - Pass graphId as route parameter
+    - _Requirements: 6.1, 6.2, 6.3_
+  - [x] 13.4 Create graph detail page
+    - Create page at /app/(auth)/graphs/[graphId]/page.tsx
+    - Fetch graph details and documents on page load
+    - Render GraphDetail component
+    - Handle add document action
+    - Fetch and render graph visualization
+    - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 8.1, 8.2, 8.3, 8.4, 8.5, 9.1, 9.2, 9.3, 9.4, 9.5_
+
+- [x] 14. Create editor page with graph context
+  - Create page at /app/(auth)/graphs/[graphId]/editor/page.tsx
+  - Extract graphId from route parameters using useParams hook
+  - Render LexicalEditor component
+  - Pass graphId to submitEditorContent API call
+  - Navigate back to graph detail page on success
+  - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
+
+- [x] 15. Create upload page with graph context
+  - Create page at /app/(auth)/graphs/[graphId]/upload/page.tsx
+  - Extract graphId from route parameters using useParams hook
+  - Render FileUpload component
+  - Pass graphId to uploadFile API call
+  - Navigate back to graph detail page on success
+  - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
+
+- [x] 16. Create document view/edit page
+  - Create page at /app/(auth)/graphs/[graphId]/documents/[documentId]/page.tsx
+  - Fetch document details on page load
+  - For user-created documents, render LexicalEditor with content
+  - For uploaded files, show metadata and download button
+  - Allow editing of user-created documents
+  - Call updateDocument API on save
+  - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5_
+
+- [x] 17. Update GraphVisualizer component to accept graphId
+  - Update GraphVisualizer component to accept graphId prop
+  - Call getGraphVisualization API with graphId
+  - Render graph using sigma.js
+  - Show loading state during fetch
+  - Show empty state when no graph data exists
+  - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
+
+- [x] 18. Update home page to redirect to graphs list
+  - Update /app/(auth)/home/page.tsx to redirect to /graphs
+  - Use Next.js redirect or router.push
+  - _Requirements: 12.5, 15.1_
+
+- [x] 19. Add graph membership management UI (future enhancement)
+  - Create MembersModal component to show graph members
+  - Add "Manage Members" button on graph detail page (creator only)
+  - Implement add member form with user search
+  - Implement remove member action
+  - Show member roles in list
+  - Note: This is for future role-based permissions
+  - _Requirements: 14.1, 14.2, 15.5_
+
+- [ ] 20. Run database migrations and data migration
+  - Execute up migrations to create graphs and graph_memberships tables
+  - Execute migration to add graph_id to documents table
+  - Run data migration script to create default graphs for existing users
+  - Verify all existing documents are associated with graphs
+  - Verify all users have owner membership for their default graph
+  - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 14.1_

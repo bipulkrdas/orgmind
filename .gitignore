@@ -1,0 +1,97 @@
+# Environment variables
+.env
+.env.local
+.env*.local
+
+# Dependencies
+node_modules/
+backend/vendor/
+
+# Build outputs
+frontend/.next/
+frontend/out/
+backend/bin/
+backend/tmp/
+dist/
+build/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+*.test
+*.out
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Go specific
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+__debug_bin*
+
+# Next.js specific
+.next/
+out/
+.vercel
+.turbo
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Secrets and credentials
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
+
+# Cloud deployment
+.gcloud/
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Kiro IDE (keep specs and steering)
+.kiro/cache/
+.kiro/logs/
+
+# Docker
+docker-compose.override.yml
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Package manager locks (optional - uncomment if you want to ignore)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml

@@ -1,0 +1,41 @@
+# Ignore development files
+.env
+.env.*
+*.log
+
+# Ignore git
+.git
+.gitignore
+
+# Ignore documentation
+*.md
+docs/
+
+# Ignore test files
+*_test.go
+testdata/
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ignore build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+server
+main
+
+# Ignore temporary files
+tmp/
+temp/
+*.tmp
+
+# Ignore coverage files
+*.out
+coverage.txt

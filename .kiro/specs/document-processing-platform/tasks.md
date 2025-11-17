@@ -1,0 +1,311 @@
+# Implementation Plan
+
+- [x] 1. Set up backend project structure and core configuration
+  - Initialize Go module with required dependencies (gin, sqlx, squirrel, Zep SDK, AWS SDK)
+  - Create directory structure following layered architecture (cmd, internal, pkg, migrations)
+  - Implement configuration loader to read environment variables with validation
+  - Create .env.example file with all required environment variables
+  - _Requirements: 10.1, 10.2, 10.3_
+
+- [x] 2. Implement database schema and migrations
+  - [x] 2.1 Create PostgreSQL migration files for users, documents, and password_reset_tokens tables
+    - Write SQL migration with proper indexes and foreign key constraints
+    - Include UUID generation and timestamp defaults
+    - _Requirements: 1.1, 4.2, 8.4_
+  - [x] 2.2 Implement database connection and migration runner
+    - Create database connection pool using sqlx with DATABASE_URL
+    - Implement migration runner to apply schema changes
+    - Add connection health check and retry logic
+    - _Requirements: 10.1, 10.2_
+
+- [x] 3. Implement data models and repository layer
+  - [x] 3.1 Create Go model structs for User, Document, and GraphData
+    - Define structs with JSON tags in camelCase and db tags in snake_case
+    - Include proper pointer types for nullable fields
+    - _Requirements: 1.1, 4.1, 7.3_
+  - [x] 3.2 Implement UserRepository with CRUD operations
+    - Write Create, GetByID, GetByEmail, and Update methods using sqlx
+    - Use explicit column selection (no SELECT *)
+    - Implement proper error handling for duplicate emails
+    - _Requirements: 1.1, 1.4, 8.1_
+  - [x] 3.3 Implement DocumentRepository with CRUD operations
+    - Write Create, GetByID, ListByUserID, and Update methods
+    - Use Masterminds/squirrel for query building
+    - _Requirements: 4.1, 4.2, 7.1_
+
+- [x] 4. Implement JWT utilities and authentication middleware
+  - [x] 4.1 Create JWT utility functions for token generation and validation
+    - Implement GenerateToken with user claims and configurable expiration
+    - Implement ValidateToken with signature verification
+    - Use JWT_SECRET from environment variables
+    - _Requirements: 1.1, 1.5, 8.1_
+  - [x] 4.2 Implement authentication middleware for protected routes
+    - Extract and validate JWT from Authorization header
+    - Extract userID from token claims and add to context
+    - Return 401 error for invalid/expired tokens
+    - _Requirements: 2.4, 3.3, 7.1_
+
+- [x] 5. Implement authentication service and handlers
+  - [x] 5.1 Create AuthService with email/password authentication
+    - Implement SignUp method with bcrypt password hashing (cost 12)
+    - Implement SignIn method with password verification and JWT generation
+    - Check for duplicate email during signup
+    - _Requirements: 1.1, 1.4, 8.1, 8.3_
+  - [x] 5.2 Implement password reset functionality
+    - Create ResetPassword method to generate reset token and send email
+    - Implement UpdatePassword method to validate token and update password
+    - Store reset tokens in password_reset_tokens table with expiration
+    - _Requirements: 8.4, 8.5_
+  - [x] 5.3 Implement OAuth authentication flows
+    - Create InitiateOAuth method for Google, Okta, and Office365
+    - Implement HandleOAuthCallback to exchange code for user info
+    - Create or authenticate user based on OAuth provider data
+    - Generate JWT token after successful OAuth authentication
+    - _Requirements: 1.2, 1.3, 1.5_
+  - [x] 5.4 Create authentication HTTP handlers
+    - Implement POST /api/auth/signup handler
+    - Implement POST /api/auth/signin handler
+    - Implement POST /api/auth/reset-password handler
+    - Implement POST /api/auth/update-password handler
+    - Implement GET /api/auth/oauth/:provider handler for OAuth initiation
+    - Implement GET /api/auth/oauth/:provider/callback handler
+    - _Requirements: 1.1, 1.2, 1.3, 8.1, 8.4_
+
+- [x] 6. Implement storage service with S3 integration
+  - [x] 6.1 Create StorageService interface and S3 implementation
+    - Define interface with Upload, Download, Delete, and GetURL methods
+    - Implement S3StorageService using AWS SDK v2
+    - Configure S3 client with credentials from environment variables
+    - _Requirements: 4.3, 10.1_
+  - [x] 6.2 Implement document upload and storage logic
+    - Generate unique document IDs (UUID)
+    - Create S3 keys with user-specific prefixes (userID/documentID)
+    - Upload content to S3 with proper content type
+    - Handle S3 errors and implement retry logic
+    - _Requirements: 4.1, 4.3, 4.4, 4.5_
+
+- [x] 7. Implement document processing and chunking utilities
+  - [x] 7.1 Create text chunking utility
+    - Implement ChunkDocument function with 10,000 character max per chunk
+    - Preserve sentence boundaries using punctuation detection
+    - Add 200-character overlap between chunks for context
+    - _Requirements: 5.1, 5.3_
+  - [x] 7.2 Implement text cleaning utility
+    - Create CleanText function to remove excessive whitespace
+    - Strip formatting artifacts and normalize line endings
+    - Preserve document structure and readability
+    - _Requirements: 5.2_
+  - [x] 7.3 Create ProcessingService with document processing workflow
+    - Implement ProcessDocument method that orchestrates chunking and Zep integration
+    - Call CleanText before chunking
+    - Pass chunks to ZepService for memory creation
+    - Update document status in database
+    - _Requirements: 5.1, 5.2, 5.4, 5.5_
+
+- [x] 8. Implement Zep service integration
+  - [x] 8.1 Create ZepService with Zep Go SDK v3 integration
+    - Initialize Zep client with API key from environment variables
+    - Implement AddMemory method to add document chunks to Zep Grafiti memory
+    - Associate memory with user session/identifier
+    - Implement retry logic (3 attempts with exponential backoff)
+    - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
+  - [x] 8.2 Implement graph retrieval from Zep
+    - Create GetGraph method to query Zep for user's knowledge graph
+    - Transform Zep graph data to internal GraphData format
+    - Handle cases where no graph exists for user
+    - _Requirements: 7.2, 7.3, 7.5_
+
+- [x] 9. Implement document service and handlers
+  - [x] 9.1 Create DocumentService with editor content processing
+    - Implement CreateFromEditor method to handle text content from editor
+    - Extract text content and pass to ProcessingService
+    - Store document metadata in database
+    - Upload content to S3 via StorageService
+    - _Requirements: 2.3, 2.5, 4.1, 4.2_
+  - [x] 9.2 Implement file upload processing
+    - Create CreateFromFile method to handle multipart file uploads
+    - Validate file type and size (50MB max)
+    - Extract text content from supported file formats
+    - Store file in S3 and metadata in database
+    - _Requirements: 3.1, 3.2, 3.4, 3.5_
+  - [x] 9.3 Create document HTTP handlers
+    - Implement POST /api/documents/editor handler for editor submissions
+    - Implement POST /api/documents/upload handler for file uploads
+    - Implement GET /api/documents handler to list user documents
+    - Implement GET /api/documents/:id handler to get document details
+    - All handlers must validate JWT and extract userID
+    - _Requirements: 2.3, 2.4, 3.2, 3.3_
+
+- [x] 10. Implement graph visualization handlers
+  - [x] 10.1 Create graph HTTP handler
+    - Implement GET /api/graphs/:userId handler to retrieve knowledge graph
+    - Validate JWT and ensure user can only access their own graphs
+    - Call ZepService.GetGraph to fetch graph data
+    - Transform graph data to sigma.js compatible format
+    - Return empty graph message when no data exists
+    - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
+
+- [x] 11. Set up router with public and authenticated route groups
+  - [x] 11.1 Create main router with middleware
+    - Initialize Gin router with CORS, logging, and error handling middleware
+    - Configure request size limits for file uploads
+    - _Requirements: 9.3_
+  - [x] 11.2 Define public routes group
+    - Register authentication endpoints (signup, signin, reset-password, OAuth)
+    - No JWT validation required for public routes
+    - _Requirements: 9.1, 9.2_
+  - [x] 11.3 Define authenticated routes group
+    - Apply JWT authentication middleware to all routes
+    - Register document endpoints (editor, upload, list, get)
+    - Register graph visualization endpoint
+    - _Requirements: 9.3_
+
+- [x] 12. Create backend main entry point
+  - Load configuration from environment variables
+  - Initialize database connection and run migrations
+  - Initialize all services (Auth, Document, Processing, Zep, Storage)
+  - Set up router with all handlers
+  - Start HTTP server with graceful shutdown
+  - _Requirements: 10.1, 10.2, 10.3_
+
+- [x] 13. Set up frontend Next.js project structure
+  - Initialize Next.js 14+ project with TypeScript and Tailwind CSS
+  - Create directory structure with app router (public and auth route groups)
+  - Install required dependencies (Lexical, sigma.js, React Query)
+  - Configure environment variables for API URL
+  - _Requirements: 9.1, 10.5_
+
+- [x] 14. Implement frontend TypeScript types and API utilities
+  - [x] 14.1 Create TypeScript type definitions
+    - Define User, Document, GraphData, GraphNode, GraphEdge interfaces
+    - Create authentication types (Credentials, OAuthProvider)
+    - Match backend JSON structure with camelCase
+    - _Requirements: 1.5, 2.3, 7.4_
+  - [x] 14.2 Implement JWT token management utilities
+    - Create functions to store, retrieve, and clear JWT from localStorage
+    - Implement token expiration check
+    - _Requirements: 1.5, 8.2_
+  - [x] 14.3 Create API client with error handling
+    - Implement apiCall function with automatic JWT injection
+    - Handle 401 errors by clearing token and redirecting to signin
+    - Create APIError class for structured error handling
+    - _Requirements: 2.4, 3.3_
+  - [x] 14.4 Implement API functions for authentication
+    - Create signUp, signIn, resetPassword, updatePassword functions
+    - Implement OAuth initiation and callback handling
+    - _Requirements: 1.1, 1.2, 1.3, 8.1, 8.4_
+  - [x] 14.5 Implement API functions for documents and graphs
+    - Create submitEditorContent, uploadFile, listDocuments functions
+    - Implement getGraph function to fetch knowledge graph data
+    - _Requirements: 2.3, 3.2, 7.1_
+
+- [x] 15. Implement authentication components
+  - [x] 15.1 Create SignUpForm component
+    - Build form with email, password, firstName, lastName fields
+    - Implement form validation and error display
+    - Call signUp API on submission and handle response
+    - _Requirements: 1.1, 1.4_
+  - [x] 15.2 Create SignInForm component
+    - Build form with email and password fields
+    - Implement form validation and error display
+    - Call signIn API and store JWT token on success
+    - _Requirements: 8.1, 8.2, 8.3_
+  - [x] 15.3 Create OAuthButtons component
+    - Display buttons for Google, Okta, and Office365
+    - Implement OAuth initiation on button click
+    - _Requirements: 1.2, 1.3_
+  - [x] 15.4 Create password reset components
+    - Build ResetPasswordForm to request reset email
+    - Build UpdatePasswordForm to set new password with token
+    - _Requirements: 8.4, 8.5_
+
+- [x] 16. Implement public route pages
+  - [x] 16.1 Create landing page
+    - Build landing page with platform overview and features
+    - Add navigation to signup and signin pages
+    - _Requirements: 9.1, 9.4_
+  - [x] 16.2 Create signup page
+    - Render SignUpForm and OAuthButtons components
+    - Redirect to home page after successful signup
+    - _Requirements: 1.1, 1.2, 1.3, 1.5_
+  - [x] 16.3 Create signin page
+    - Render SignInForm and OAuthButtons components
+    - Redirect to home page after successful signin
+    - _Requirements: 8.1, 8.2_
+  - [x] 16.4 Create password reset page
+    - Render password reset form
+    - _Requirements: 8.4_
+  - [x] 16.5 Create OAuth callback handler page
+    - Extract OAuth code from URL parameters
+    - Call OAuth callback API to complete authentication
+    - Store JWT token and redirect to home page
+    - _Requirements: 1.2, 1.3, 1.5_
+
+- [x] 17. Implement route protection middleware
+  - Create Next.js middleware to protect authenticated routes
+  - Check for valid JWT token in localStorage
+  - Redirect to signin page if token is missing or expired
+  - Allow access to public routes without authentication
+  - _Requirements: 9.2, 9.3_
+
+- [x] 18. Implement Lexical editor component
+  - [x] 18.1 Create LexicalEditor component with rich text features
+    - Initialize Lexical editor with plugins for headings, lists, bold, italic
+    - Implement toolbar with formatting controls
+    - Add auto-save to localStorage
+    - _Requirements: 2.1, 2.2_
+  - [x] 18.2 Add editor submission functionality
+    - Create submit button with loading state
+    - Extract plain text or HTML content from editor
+    - Call submitEditorContent API with content
+    - Display success/error messages
+    - _Requirements: 2.3_
+
+- [x] 19. Implement file upload component
+  - [x] 19.1 Create FileUpload component with drag-and-drop
+    - Build drag-and-drop zone with visual feedback
+    - Implement file input with click-to-browse
+    - _Requirements: 3.1_
+  - [x] 19.2 Add file validation and upload logic
+    - Validate file type against accepted types whitelist
+    - Validate file size (50MB max)
+    - Display validation errors to user
+    - Call uploadFile API with FormData
+    - Show upload progress indicator
+    - _Requirements: 3.1, 3.2, 3.5_
+
+- [x] 20. Create authenticated home page
+  - Create home page layout with navigation
+  - Render LexicalEditor component for document creation
+  - Render FileUpload component for file uploads
+  - Display user's recent documents list
+  - Add link to graph visualization page
+  - _Requirements: 2.1, 3.1, 9.4_
+
+- [x] 21. Implement graph visualization component and page
+  - [x] 21.1 Create GraphVisualizer component with sigma.js
+    - Initialize sigma.js with graph container
+    - Implement force-directed layout algorithm
+    - Add zoom and pan controls
+    - Implement node selection and highlighting
+    - Style nodes and edges with colors and sizes
+    - _Requirements: 7.4_
+  - [x] 21.2 Create graph visualization page
+    - Fetch graph data using getGraph API
+    - Render GraphVisualizer with fetched data
+    - Display "no graphs available" message when empty
+    - Add loading state during data fetch
+    - _Requirements: 7.1, 7.4, 7.5_
+
+- [x] 22. Create root and authenticated layouts
+  - Create root layout with global styles and metadata
+  - Create authenticated layout that wraps protected pages
+  - Add navigation header with user menu and logout
+  - Implement logout functionality to clear JWT token
+  - _Requirements: 9.4, 9.5_
+
+- [x] 23. Add environment configuration files
+  - Create .env.example for backend with all required variables
+  - Create .env.local.example for frontend with API URL
+  - Document all environment variables with descriptions
+  - _Requirements: 10.1, 10.2, 10.5_
