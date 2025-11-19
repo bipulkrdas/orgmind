@@ -70,6 +70,7 @@ func main() {
 	documentRepo := repository.NewDocumentRepository(db.DB)
 	resetTokenRepo := repository.NewPasswordResetTokenRepository(db.DB)
 	graphRepo := repository.NewGraphRepository(db.DB)
+	geminiStoreRepo := repository.NewGeminiStoreRepository(db.DB)
 
 	// Initialize storage service (S3)
 	log.Println("Initializing storage service...")
@@ -92,6 +93,53 @@ func main() {
 	}
 	log.Println("Zep service initialized successfully")
 
+	// Initialize Gemini service
+	var geminiService service.GeminiService
+	if cfg.GeminiAPIKey != "" {
+		log.Println("Validating Gemini configuration...")
+
+		// Validate Gemini configuration before initialization
+		if err := cfg.ValidateGeminiConfig(); err != nil {
+			log.Fatalf("Gemini configuration validation failed: %v", err)
+		}
+		log.Println("Gemini configuration validated successfully")
+
+		log.Println("Initializing Gemini service...")
+
+		// Create Gemini service (without store ID initially)
+		geminiSvc, err := service.NewGeminiService(
+			cfg.GeminiAPIKey,
+			cfg.GeminiProject,
+			cfg.GeminiLocation,
+			"", // storeID - will be set after initialization
+			cfg.GeminiStoreName,
+			graphRepo,
+			documentRepo,
+			geminiStoreRepo,
+		)
+		if err != nil {
+			log.Fatalf("Failed to initialize Gemini service: %v", err)
+		}
+		log.Println("Gemini service initialized successfully")
+
+		// Initialize File Search store
+		log.Printf("Initializing Gemini File Search store: %s", cfg.GeminiStoreName)
+		storeID, err := geminiSvc.InitializeStore(ctx, cfg.GeminiStoreName)
+		if err != nil {
+			log.Fatalf("Failed to initialize Gemini File Search store: %v", err)
+		}
+
+		// Store the returned store ID in config for use by other services
+		cfg.GeminiStoreID = storeID
+		log.Printf("Gemini File Search store initialized successfully: %s", storeID)
+
+		geminiService = geminiSvc
+	} else {
+		log.Println("GEMINI_API_KEY not set, skipping Gemini service initialization")
+		log.Println("AI chat features will not be available")
+		geminiService = nil
+	}
+
 	// Initialize extraction service
 	log.Println("Initializing extraction service...")
 	extractionService := extraction.NewExtractionRouter(extraction.DefaultConfig())
@@ -102,17 +150,22 @@ func main() {
 	authService := service.NewAuthService(userRepo, resetTokenRepo, cfg)
 	graphService := service.NewGraphService(graphRepo, zepService)
 	processingService := service.NewProcessingService(documentRepo, zepService)
-	documentService := service.NewDocumentService(documentRepo, storageService, processingService, graphService, extractionService)
+	documentService := service.NewDocumentService(documentRepo, graphRepo, storageService, processingService, graphService, extractionService, geminiService)
+
+	// Initialize chat repository and service
+	chatRepo := repository.NewChatRepository(db.DB)
+	chatService := service.NewChatService(chatRepo, graphRepo, geminiService)
 
 	// Initialize handlers
 	log.Println("Initializing handlers...")
 	authHandler := handler.NewAuthHandler(authService)
 	documentHandler := handler.NewDocumentHandler(documentService)
 	graphHandler := handler.NewGraphHandler(graphService, documentService, zepService)
+	chatHandler := handler.NewChatHandler(chatService, graphService)
 
 	// Set up router with all handlers
 	log.Println("Setting up router...")
-	appRouter := router.NewRouter(authHandler, documentHandler, graphHandler, cfg)
+	appRouter := router.NewRouter(authHandler, documentHandler, graphHandler, chatHandler, cfg)
 	ginEngine := appRouter.Setup()
 
 	// Create HTTP server

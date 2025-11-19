@@ -14,6 +14,7 @@ type Router struct {
 	authHandler     *handler.AuthHandler
 	documentHandler *handler.DocumentHandler
 	graphHandler    *handler.GraphHandler
+	chatHandler     *handler.ChatHandler
 	config          *config.Config
 }
 
@@ -22,12 +23,14 @@ func NewRouter(
 	authHandler *handler.AuthHandler,
 	documentHandler *handler.DocumentHandler,
 	graphHandler *handler.GraphHandler,
+	chatHandler *handler.ChatHandler,
 	config *config.Config,
 ) *Router {
 	return &Router{
 		authHandler:     authHandler,
 		documentHandler: documentHandler,
 		graphHandler:    graphHandler,
+		chatHandler:     chatHandler,
 		config:          config,
 	}
 }

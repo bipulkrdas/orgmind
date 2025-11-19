@@ -67,6 +67,20 @@ Only configure the OAuth providers you want to enable:
 - `SMTP_FROM_EMAIL`: From email address
 - `SMTP_FROM_NAME`: From name (default: OrgMind)
 
+### Google Gemini (AI Chat)
+- `GEMINI_API_KEY`: Google Gemini API key
+  - Obtain from: https://aistudio.google.com/app/apikey
+- `GEMINI_PROJECT_ID`: Google Cloud project ID
+  - Obtain from: https://console.cloud.google.com/
+- `GEMINI_LOCATION`: Google Cloud region (default: `us-central1`)
+  - Options: `us-central1`, `us-east1`, `us-west1`, `europe-west1`, `asia-northeast1`
+- `GEMINI_MODEL`: Model to use (default: `gemini-1.5-flash`)
+  - Options: `gemini-1.5-flash` (faster, cheaper), `gemini-1.5-pro` (more capable)
+- `GEMINI_MAX_RETRIES`: Retry attempts (default: 3)
+- `GEMINI_TIMEOUT_SECONDS`: Request timeout (default: 60)
+
+For detailed setup instructions, see [GEMINI_SETUP.md](./GEMINI_SETUP.md)
+
 ## Environment-Specific Configuration
 
 ### Development
@@ -138,6 +152,14 @@ Configure using S3-compatible API with appropriate credentials.
 - Check Zep Cloud service status
 - Verify network connectivity to Zep API
 - Check retry configuration if experiencing transient failures
+
+### Gemini API Errors
+- Verify `GEMINI_API_KEY` is valid
+- Check that Generative Language API is enabled in your Google Cloud project
+- Verify `GEMINI_PROJECT_ID` is correct
+- Check that billing is enabled for the project
+- Verify region is supported (see `GEMINI_LOCATION` options)
+- See [GEMINI_SETUP.md](./GEMINI_SETUP.md) for detailed troubleshooting
 
 ### OAuth Issues
 - Verify redirect URLs match OAuth provider configuration

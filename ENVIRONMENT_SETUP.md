@@ -132,6 +132,21 @@ SMTP_PASSWORD=your-smtp-password
 SMTP_FROM_EMAIL=noreply@orgmind.com
 ```
 
+### AI-Powered Chat (Google Gemini)
+```bash
+# Backend
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_PROJECT_ID=your-project-id
+GEMINI_LOCATION=us-central1
+GEMINI_STORE_NAME=OrgMind Documents  # Optional: Display name for shared File Search store
+```
+
+Setup: https://aistudio.google.com/app/apikey
+
+**Note:** OrgMind uses a single shared File Search store with metadata-based filtering for graph isolation. The store is created automatically at startup.
+
+For detailed setup instructions, see [backend/GEMINI_SETUP.md](./backend/GEMINI_SETUP.md)
+
 ## Environment-Specific Configurations
 
 ### Development

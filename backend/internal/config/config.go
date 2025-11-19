@@ -31,6 +31,13 @@ type Config struct {
 	ZepAPIKey string
 	ZepAPIURL string
 
+	// Google Gemini
+	GeminiAPIKey    string
+	GeminiProject   string
+	GeminiLocation  string
+	GeminiStoreName string // Display name for shared File Search store
+	GeminiStoreID   string // Runtime value: Gemini-generated store ID
+
 	// OAuth - Google
 	GoogleClientID     string
 	GoogleClientSecret string
@@ -65,6 +72,11 @@ func Load() (*Config, error) {
 		AWSS3Bucket:           getEnv("AWS_S3_BUCKET", ""),
 		ZepAPIKey:             getEnv("ZEP_API_KEY", ""),
 		ZepAPIURL:             getEnv("ZEP_API_URL", "https://api.getzep.com/api/v2"),
+		GeminiAPIKey:          getEnv("GEMINI_API_KEY", ""),
+		GeminiProject:         getEnv("GEMINI_PROJECT_ID", ""),
+		GeminiLocation:        getEnv("GEMINI_LOCATION", "us-central1"),
+		GeminiStoreName:       getEnv("GEMINI_STORE_NAME", "OrgMind Documents"),
+		GeminiStoreID:         "", // Set at runtime during store initialization
 		GoogleClientID:        getEnv("GOOGLE_CLIENT_ID", ""),
 		GoogleClientSecret:    getEnv("GOOGLE_CLIENT_SECRET", ""),
 		OktaDomain:            getEnv("OKTA_DOMAIN", ""),
@@ -93,6 +105,46 @@ func (c *Config) Validate() error {
 	for key, value := range required {
 		if value == "" {
 			return fmt.Errorf("required environment variable %s is not set", key)
+		}
+	}
+
+	return nil
+}
+
+// ValidateGeminiConfig validates Gemini-specific configuration
+// This should be called before initializing Gemini service
+func (c *Config) ValidateGeminiConfig() error {
+	// If Gemini API key is not set, Gemini features are disabled
+	if c.GeminiAPIKey == "" {
+		return nil // Not an error, just means Gemini is not configured
+	}
+
+	// If API key is set, validate all required Gemini fields
+	required := map[string]string{
+		"GEMINI_API_KEY":    c.GeminiAPIKey,
+		"GEMINI_PROJECT_ID": c.GeminiProject,
+		"GEMINI_LOCATION":   c.GeminiLocation,
+	}
+
+	for key, value := range required {
+		if value == "" {
+			return fmt.Errorf("required environment variable %s is not set (required when GEMINI_API_KEY is configured)", key)
+		}
+	}
+
+	// Validate GEMINI_STORE_NAME format (alphanumeric, spaces, hyphens only)
+	if c.GeminiStoreName == "" {
+		return fmt.Errorf("GEMINI_STORE_NAME cannot be empty")
+	}
+
+	// Check for valid characters: alphanumeric, spaces, hyphens
+	for _, char := range c.GeminiStoreName {
+		if !((char >= 'a' && char <= 'z') ||
+			(char >= 'A' && char <= 'Z') ||
+			(char >= '0' && char <= '9') ||
+			char == ' ' ||
+			char == '-') {
+			return fmt.Errorf("GEMINI_STORE_NAME contains invalid character '%c' (only alphanumeric, spaces, and hyphens allowed)", char)
 		}
 	}
 

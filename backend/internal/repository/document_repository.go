@@ -197,3 +197,33 @@ func (r *documentRepository) Delete(ctx context.Context, docID string) error {
 
 	return nil
 }
+
+// UpdateGeminiFileID updates the Gemini File Search file ID for a document
+func (r *documentRepository) UpdateGeminiFileID(ctx context.Context, docID, geminiFileID string) error {
+	query, args, err := r.qb.
+		Update("documents").
+		Set("gemini_file_id", geminiFileID).
+		Set("updated_at", sq.Expr("NOW()")).
+		Where(sq.Eq{"id": docID}).
+		ToSql()
+
+	if err != nil {
+		return fmt.Errorf("failed to build update query: %w", err)
+	}
+
+	result, err := r.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to update gemini file ID: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("document not found")
+	}
+
+	return nil
+}

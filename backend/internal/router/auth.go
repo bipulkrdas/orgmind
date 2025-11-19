@@ -41,5 +41,17 @@ func (r *Router) setupAuthenticatedRoutes(router *gin.Engine) {
 		// Graph-specific data endpoints
 		graphs.GET("/:id/documents", r.graphHandler.ListGraphDocuments)
 		graphs.GET("/:id/visualization", r.graphHandler.GetGraphVisualization)
+
+		// Chat endpoints - using :id to match parent graph routes
+		chat := graphs.Group("/:id/chat")
+		{
+			// Thread management
+			chat.POST("/threads", r.chatHandler.CreateThread)
+			chat.GET("/threads/:threadId/messages", r.chatHandler.GetThreadMessages)
+			chat.POST("/threads/:threadId/messages", r.chatHandler.SendMessage)
+
+			// SSE streaming endpoint
+			chat.GET("/stream", r.chatHandler.StreamResponse)
+		}
 	}
 }

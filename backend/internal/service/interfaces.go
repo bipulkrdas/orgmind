@@ -86,3 +86,34 @@ type GraphService interface {
 	// Decrement document count for a graph
 	DecrementDocumentCount(ctx context.Context, graphID string) error
 }
+
+// GeminiService defines the interface for Google Gemini File Search integration
+type GeminiService interface {
+	// Store initialization (called once at startup)
+	InitializeStore(ctx context.Context, storeName string) (storeID string, err error)
+
+	// Document management (uses shared store with metadata)
+	UploadDocument(ctx context.Context, storeID, graphID, graphName, documentID string, content []byte, mimeType string) (string, error)
+
+	// Chat interaction (with metadata filtering)
+	GenerateStreamingResponse(ctx context.Context, storeID, graphID, domain, version, query string, responseChan chan<- string) error
+}
+
+// ChatService defines the interface for chat operations
+type ChatService interface {
+	// Thread management
+	CreateThread(ctx context.Context, graphID, userID string) (*models.ChatThread, error)
+	GetThread(ctx context.Context, threadID, userID string) (*models.ChatThread, error)
+	ListThreads(ctx context.Context, graphID, userID string) ([]*models.ChatThread, error)
+
+	// Message management
+	GetMessages(ctx context.Context, threadID string, limit, offset int) ([]*models.ChatMessage, error)
+	SaveMessage(ctx context.Context, message *models.ChatMessage) error
+	SaveUserMessage(ctx context.Context, threadID, userID, content string) (*models.ChatMessage, error)
+
+	// AI interaction
+	// GenerateResponse is the old method - kept for backward compatibility
+	GenerateResponse(ctx context.Context, threadID, userID, userMessage string, responseChan chan<- string) error
+	// GenerateResponseForMessage generates AI response for a specific user message
+	GenerateResponseForMessage(ctx context.Context, threadID, userMessageID, graphID string, responseChan chan<- string) (assistantMessageID string, err error)
+}

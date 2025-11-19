@@ -54,6 +54,9 @@ Thumbs.db
 *.out
 go.work
 __debug_bin*
+# Go binaries (anywhere in the project)
+server
+migrate
 
 # Next.js specific
 .next/

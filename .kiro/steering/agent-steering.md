@@ -284,6 +284,105 @@ Once Neon fixes their prepared statement caching or we implement a backend solut
 3. Update this documentation
 4. Test thoroughly with concurrent requests
 
+## Google Gemini File Search Integration
+
+### Overview
+OrgMind integrates Google Gemini's File Search capability for AI-powered document Q&A. Documents are uploaded to File Search stores (one per graph) and used to provide context-aware responses.
+
+### Official Documentation & Resources
+
+**Primary Documentation:**
+- **File Search Overview**: https://ai.google.dev/gemini-api/docs/file-search
+- **File Search Stores Guide**: https://ai.google.dev/gemini-api/docs/file-search#file-search-stores
+- **REST API Reference**: https://ai.google.dev/gemini-api/docs/file-search#rest
+
+**Go SDK Resources:**
+- **GitHub Repository**: https://github.com/googleapis/go-genai
+- **Example Implementation**: https://github.com/googleapis/go-genai/blob/main/examples/filesearchstores/create_upload_and_call_file_search.go
+- **SDK Implementation**: https://github.com/googleapis/go-genai/blob/main/filesearchstores.go
+
+### Key Implementation Notes
+
+1. **File Search Store Management**:
+   - Create one File Search store per graph (use graph_id as identifier)
+   - Store the `gemini_store_id` in the graphs table
+   - Cache store IDs to avoid repeated lookups
+
+2. **Document Upload**:
+   - Upload documents asynchronously in background goroutines
+   - Store `gemini_file_id` in documents table for tracking
+   - Handle upload failures gracefully (log but don't fail main flow)
+   - Continue with Zep processing even if Gemini upload fails
+
+3. **Query and Response**:
+   - Query File Search store for relevant document content
+   - Use retrieved context with Gemini API to generate responses
+   - Stream responses using Server-Sent Events (SSE)
+   - Save both user and AI messages to database
+
+4. **Error Handling**:
+   - Implement retry logic with exponential backoff (3 attempts)
+   - Log all Gemini API interactions for debugging
+   - Provide user-friendly error messages
+   - Fall back gracefully if File Search is unavailable
+
+5. **SDK Usage Pattern**:
+   ```go
+   // Example pattern from go-genai SDK
+   import "github.com/googleapis/go-genai"
+   
+   // Create client
+   client, err := genai.NewClient(ctx, &genai.ClientConfig{
+       APIKey: os.Getenv("GEMINI_API_KEY"),
+       Backend: genai.BackendGoogleAI,
+   })
+   
+   // Create File Search store
+   store, err := client.CreateFileSearchStore(ctx, &genai.CreateFileSearchStoreRequest{
+       DisplayName: graphID,
+   })
+   
+   // Upload document
+   file, err := client.UploadFile(ctx, &genai.UploadFileRequest{
+       File: bytes.NewReader(content),
+       MIMEType: mimeType,
+   })
+   
+   // Query with File Search
+   response := client.GenerateContent(ctx, &genai.GenerateContentRequest{
+       Model: "gemini-1.5-flash",
+       Contents: []*genai.Content{{
+           Parts: []*genai.Part{{Text: query}},
+       }},
+       Tools: []*genai.Tool{{
+           FileSearchTool: &genai.FileSearchTool{
+               FileSearchStoreIDs: []string{storeID},
+           },
+       }},
+   })
+   ```
+
+6. **Environment Variables**:
+   ```bash
+   GEMINI_API_KEY=your-api-key
+   GEMINI_PROJECT_ID=your-project-id
+   GEMINI_LOCATION=us-central1
+   ```
+
+### Integration with Existing Services
+
+Follow the same pattern as Zep integration:
+- Create external resource FIRST (File Search store)
+- Store reference ID in database
+- Implement rollback on failure
+- Process asynchronously to avoid blocking
+
+### Cost Considerations
+- Monitor API usage and costs
+- Implement rate limiting
+- Consider caching responses for common queries
+- Set appropriate quotas and alerts
+
 ## Required Libraries
-- Backend: Zep SDK, langchain-go, sqlx, Masterminds/squirrel, gin-gonic/gin
-- Frontend: sigma.js for knowledge graph visualization
+- Backend: Zep SDK, Google Gemini SDK (go-genai), langchain-go, sqlx, Masterminds/squirrel, gin-gonic/gin
+- Frontend: sigma.js for knowledge graph visualization, Zustand for chat state management

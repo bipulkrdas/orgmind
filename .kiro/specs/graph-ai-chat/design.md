@@ -662,3 +662,49 @@ data: {"messageId": "assistant-msg-uuid"}
    - Load balancing with sticky sessions
    - Database read replicas for queries
    - CDN for static assets
+
+## External References
+
+### Google Gemini File Search Documentation
+
+**Official Documentation:**
+- File Search Overview: https://ai.google.dev/gemini-api/docs/file-search
+- File Search Stores: https://ai.google.dev/gemini-api/docs/file-search#file-search-stores
+- REST API Reference: https://ai.google.dev/gemini-api/docs/file-search#rest
+
+**Go SDK (go-genai):**
+- GitHub Repository: https://github.com/googleapis/go-genai
+- Example Implementation: https://github.com/googleapis/go-genai/blob/main/examples/filesearchstores/create_upload_and_call_file_search.go
+- SDK Source Code: https://github.com/googleapis/go-genai/blob/main/filesearchstores.go
+
+**Key SDK Features:**
+- File Search store creation and management
+- Document upload with MIME type support
+- Streaming response generation
+- Error handling and retries
+
+**Implementation Notes:**
+- The go-genai SDK is the latest official Go client for Gemini API
+- File Search is a relatively new feature - always check latest documentation
+- Example code in the repository demonstrates best practices
+- SDK handles authentication, retries, and streaming automatically
+
+### Server-Sent Events (SSE)
+
+**Specifications:**
+- MDN Web Docs: https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events
+- HTML5 Spec: https://html.spec.whatwg.org/multipage/server-sent-events.html
+
+**Go Implementation:**
+- Gin SSE Example: https://github.com/gin-gonic/examples/tree/master/server-sent-event
+
+### Zustand State Management
+
+**Documentation:**
+- Official Docs: https://zustand-demo.pmnd.rs/
+- GitHub: https://github.com/pmndrs/zustand
+
+**Best Practices:**
+- Use selectors to optimize re-renders
+- Keep stores focused and modular
+- Avoid storing derived state

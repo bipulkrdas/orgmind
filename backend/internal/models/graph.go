@@ -10,6 +10,7 @@ type Graph struct {
 	Name          string    `json:"name" db:"name"`
 	Description   *string   `json:"description" db:"description"`
 	DocumentCount int       `json:"documentCount" db:"document_count"`
+	GeminiStoreID *string   `json:"geminiStoreId,omitempty" db:"gemini_store_id"`
 	CreatedAt     time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt     time.Time `json:"updatedAt" db:"updated_at"`
 }

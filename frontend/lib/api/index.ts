@@ -2,4 +2,5 @@
 export * from './auth';
 export * from './documents';
 export * from './graphs';
+export * from './chat';
 export * from './client';

@@ -57,7 +57,7 @@ func (r *graphRepository) GetByID(ctx context.Context, graphID string) (*models.
 	query, args, err := r.qb.
 		Select(
 			"id", "creator_id", "zep_graph_id", "name", "description",
-			"document_count", "created_at", "updated_at",
+			"document_count", "gemini_store_id", "created_at", "updated_at",
 		).
 		From("graphs").
 		Where(sq.Eq{"id": graphID}).
@@ -84,7 +84,7 @@ func (r *graphRepository) GetByZepGraphID(ctx context.Context, zepGraphID string
 	query, args, err := r.qb.
 		Select(
 			"id", "creator_id", "zep_graph_id", "name", "description",
-			"document_count", "created_at", "updated_at",
+			"document_count", "gemini_store_id", "created_at", "updated_at",
 		).
 		From("graphs").
 		Where(sq.Eq{"zep_graph_id": zepGraphID}).
@@ -293,7 +293,7 @@ func (r *graphRepository) ListByUserID(ctx context.Context, userID string) ([]*m
 	query, args, err := r.qb.
 		Select(
 			"g.id", "g.creator_id", "g.zep_graph_id", "g.name", "g.description",
-			"g.document_count", "g.created_at", "g.updated_at",
+			"g.document_count", "g.gemini_store_id", "g.created_at", "g.updated_at",
 		).
 		From("graphs g").
 		Join("graph_memberships gm ON g.id = gm.graph_id").
@@ -327,6 +327,36 @@ func (r *graphRepository) UpdateDocumentCount(ctx context.Context, graphID strin
 	result, err := r.db.ExecContext(ctx, query, delta, graphID)
 	if err != nil {
 		return fmt.Errorf("failed to update document count: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("graph not found")
+	}
+
+	return nil
+}
+
+// UpdateGeminiStoreID updates the Gemini File Search store ID for a graph
+func (r *graphRepository) UpdateGeminiStoreID(ctx context.Context, graphID, geminiStoreID string) error {
+	query, args, err := r.qb.
+		Update("graphs").
+		Set("gemini_store_id", geminiStoreID).
+		Set("updated_at", sq.Expr("NOW()")).
+		Where(sq.Eq{"id": graphID}).
+		ToSql()
+
+	if err != nil {
+		return fmt.Errorf("failed to build update query: %w", err)
+	}
+
+	result, err := r.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to update gemini store ID: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()

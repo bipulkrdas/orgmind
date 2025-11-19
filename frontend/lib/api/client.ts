@@ -4,7 +4,7 @@ import type { ErrorResponse } from '../types';
 // Get API base URL from environment variable
 // In Next.js, NEXT_PUBLIC_ prefixed variables are available in the browser
 // Using globalThis to access process.env in a type-safe way
-const API_BASE_URL = 
+export const API_BASE_URL = 
   (typeof globalThis !== 'undefined' && (globalThis as any).process?.env?.NEXT_PUBLIC_API_URL) || 
   'http://localhost:8080';
 

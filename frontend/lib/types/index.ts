@@ -120,6 +120,30 @@ export interface UpdatePasswordRequest {
   newPassword: string;
 }
 
+// Chat types
+export interface ChatThread {
+  id: string;
+  graphId: string;
+  userId: string;
+  summary: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  threadId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: string;
+}
+
+export interface StreamEvent {
+  type: 'chunk' | 'done' | 'error';
+  content?: string;
+  error?: string;
+}
+
 // API response types
 export interface AuthResponse {
   token: string;

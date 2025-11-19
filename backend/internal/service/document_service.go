@@ -21,26 +21,32 @@ const (
 // documentService implements DocumentService interface
 type documentService struct {
 	documentRepo      repository.DocumentRepository
+	graphRepo         repository.GraphRepository
 	storageService    storage.StorageService
 	processingService ProcessingService
 	graphService      GraphService
 	extractionService extraction.ExtractionService
+	geminiService     GeminiService
 }
 
 // NewDocumentService creates a new instance of DocumentService
 func NewDocumentService(
 	documentRepo repository.DocumentRepository,
+	graphRepo repository.GraphRepository,
 	storageService storage.StorageService,
 	processingService ProcessingService,
 	graphService GraphService,
 	extractionService extraction.ExtractionService,
+	geminiService GeminiService,
 ) DocumentService {
 	return &documentService{
 		documentRepo:      documentRepo,
+		graphRepo:         graphRepo,
 		storageService:    storageService,
 		processingService: processingService,
 		graphService:      graphService,
 		extractionService: extractionService,
+		geminiService:     geminiService,
 	}
 }
 
@@ -135,6 +141,13 @@ func (s *documentService) CreateFromEditor(ctx context.Context, userID, graphID,
 			// Log error (in production, use proper logging)
 			fmt.Printf("Error processing document %s: %v\n", documentID, err)
 		}
+	}()
+
+	// Upload to Gemini File Search asynchronously (parallel to Zep processing)
+	go func() {
+		bgCtx := context.Background()
+		// Use plain text content with text/plain MIME type for File Search
+		s.uploadToFileSearch(bgCtx, graphID, documentID, plainText, "text/plain")
 	}()
 
 	return doc, nil
@@ -236,6 +249,13 @@ func (s *documentService) CreateFromFile(ctx context.Context, userID, graphID st
 			// Log error (in production, use proper logging)
 			fmt.Printf("Error processing document %s: %v\n", documentID, err)
 		}
+	}()
+
+	// Upload to Gemini File Search asynchronously (parallel to Zep processing)
+	go func() {
+		bgCtx := context.Background()
+		// Use extracted text content with text/plain MIME type for File Search
+		s.uploadToFileSearch(bgCtx, graphID, documentID, textContent, "text/plain")
 	}()
 
 	return doc, nil
@@ -362,6 +382,13 @@ func (s *documentService) UpdateDocument(ctx context.Context, documentID, userID
 		}
 	}()
 
+	// Re-upload to Gemini File Search asynchronously (parallel to Zep processing)
+	go func() {
+		bgCtx := context.Background()
+		// Use plain text content with text/plain MIME type for File Search
+		s.uploadToFileSearch(bgCtx, *doc.GraphID, documentID, plainText, "text/plain")
+	}()
+
 	return doc, nil
 }
 
@@ -459,4 +486,39 @@ func (s *documentService) DeleteDocument(ctx context.Context, documentID, userID
 // isValidFileType checks if the content type is supported by the extraction service
 func (s *documentService) isValidFileType(contentType string) bool {
 	return s.extractionService.IsSupported(contentType)
+}
+
+// uploadToFileSearch uploads a document to Gemini File Search asynchronously
+// This method uploads documents to the shared File Search store with metadata for graph isolation
+// Failures are logged but do not affect the main document processing flow (Zep continues)
+func (s *documentService) uploadToFileSearch(ctx context.Context, graphID, documentID, content, mimeType string) {
+	// Check if Gemini service is available
+	if s.geminiService == nil {
+		fmt.Printf("[FileSearch] Gemini service not available, skipping upload for document %s\n", documentID)
+		return
+	}
+
+	fmt.Printf("[FileSearch] Starting upload for document %s to graph %s\n", documentID, graphID)
+
+	// Get graph information to pass as metadata
+	graph, err := s.graphRepo.GetByID(ctx, graphID)
+	if err != nil {
+		fmt.Printf("[FileSearch] FAILED to get graph %s information: %v\n", graphID, err)
+		fmt.Printf("[FileSearch] Document %s will not be available for AI chat, but Zep processing continues\n", documentID)
+		return
+	}
+
+	// Upload document to shared File Search store with metadata (with built-in retry logic in GeminiService)
+	// The shared store ID is managed by the GeminiService (set during initialization)
+	fileID, err := s.geminiService.UploadDocument(ctx, "", graphID, graph.Name, documentID, []byte(content), mimeType)
+	if err != nil {
+		// Log detailed error but continue with Zep processing
+		fmt.Printf("[FileSearch] FAILED to upload document %s to File Search after retries: %v\n", documentID, err)
+		fmt.Printf("[FileSearch] Document %s will not be available for AI chat, but Zep processing continues\n", documentID)
+		// Note: Document could be marked for retry here in the future
+		return
+	}
+
+	fmt.Printf("[FileSearch] Successfully uploaded document %s to shared File Search store (file ID: %s) with graph metadata [graph_id=%s, name=%s]\n",
+		documentID, fileID, graphID, graph.Name)
 }

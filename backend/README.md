@@ -61,9 +61,19 @@ backend/
 
 See `.env.example` for all required and optional environment variables.
 
-Required variables:
+### Core Required Variables
 - `DATABASE_URL`: PostgreSQL connection string
 - `JWT_SECRET`: Secret key for JWT token signing
+- `ZEP_API_KEY`: Zep Cloud API key for knowledge graphs
+- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`: AWS credentials for S3 storage
+
+### AI Chat Feature (Optional)
+For AI-powered chat functionality, configure Google Gemini:
+- `GEMINI_API_KEY`: Google Gemini API key
+- `GEMINI_PROJECT_ID`: Google Cloud project ID
+- `GEMINI_LOCATION`: Google Cloud region (default: `us-central1`)
+
+See [GEMINI_SETUP.md](GEMINI_SETUP.md) for detailed setup instructions.
 
 ## Database Migrations
 
@@ -91,6 +101,25 @@ cat MIGRATION_QUICKSTART.md
 ```
 
 For complete migration documentation, see [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md).
+
+## API Documentation
+
+### Chat API
+
+For detailed documentation on the AI-powered chat endpoints, see [CHAT_API.md](CHAT_API.md).
+
+The Chat API provides:
+- Thread management for organizing conversations
+- Real-time AI responses via Server-Sent Events (SSE)
+- Integration with Google Gemini File Search
+- Message history with pagination
+- Rate limiting and access control
+
+Quick reference:
+- `POST /api/graphs/:graphId/chat/threads` - Create chat thread
+- `GET /api/graphs/:graphId/chat/threads/:threadId/messages` - Get messages
+- `POST /api/graphs/:graphId/chat/threads/:threadId/messages` - Send message
+- `GET /api/graphs/:graphId/chat/stream` - Stream AI response (SSE)
 
 ## Development
 
