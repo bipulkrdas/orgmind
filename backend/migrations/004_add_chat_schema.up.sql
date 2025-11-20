@@ -4,8 +4,8 @@ CREATE TABLE chat_threads (
     graph_id UUID NOT NULL REFERENCES graphs(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     summary VARCHAR(200),
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_chat_threads_graph_id ON chat_threads(graph_id);
@@ -18,7 +18,7 @@ CREATE TABLE chat_messages (
     thread_id UUID NOT NULL REFERENCES chat_threads(id) ON DELETE CASCADE,
     role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant')),
     content TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_chat_messages_thread_id ON chat_messages(thread_id);

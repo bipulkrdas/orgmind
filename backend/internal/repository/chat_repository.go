@@ -79,7 +79,7 @@ func (r *chatRepository) GetThreadByID(ctx context.Context, threadID string) (*m
 	return &thread, nil
 }
 
-// ListThreadsByGraphID retrieves all chat threads for a specific graph, ordered by creation date
+// ListThreadsByGraphID retrieves all chat threads for a specific graph, ordered by most recent activity
 func (r *chatRepository) ListThreadsByGraphID(ctx context.Context, graphID string) ([]*models.ChatThread, error) {
 	query, args, err := r.qb.
 		Select(
@@ -88,7 +88,7 @@ func (r *chatRepository) ListThreadsByGraphID(ctx context.Context, graphID strin
 		).
 		From("chat_threads").
 		Where(sq.Eq{"graph_id": graphID}).
-		OrderBy("created_at DESC").
+		OrderBy("updated_at DESC").
 		ToSql()
 
 	if err != nil {

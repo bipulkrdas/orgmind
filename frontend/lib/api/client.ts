@@ -24,13 +24,14 @@ export class APIError extends Error {
 }
 
 /**
- * Generic API call function with automatic JWT injection and error handling
+ * Generic API call function with automatic JWT injection, timeout, and error handling
  */
 export async function apiCall<T>(
   endpoint: string,
-  options?: RequestInit
+  options?: RequestInit & { timeout?: number }
 ): Promise<T> {
   const token = getJWTToken();
+  const timeout = options?.timeout || 30000; // Default 30 second timeout
   
   const headers: Record<string, string> = {
     ...(options?.headers as Record<string, string>),
@@ -46,11 +47,18 @@ export async function apiCall<T>(
     headers['Content-Type'] = 'application/json';
   }
   
+  // Create abort controller for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
+      signal: controller.signal,
     });
+    
+    clearTimeout(timeoutId);
 
     // Handle 401 Unauthorized - clear token and redirect to signin
     if (response.status === 401) {
@@ -101,17 +109,32 @@ export async function apiCall<T>(
     // Return empty object for responses without content
     return {} as T;
   } catch (error) {
+    clearTimeout(timeoutId);
+    
     // Re-throw APIError instances
     if (error instanceof APIError) {
       throw error;
     }
     
-    // Handle network errors
+    // Handle abort/timeout errors
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new APIError(
+        0,
+        'TIMEOUT_ERROR',
+        'Request timeout. The server is taking too long to respond.'
+      );
+    }
+    
+    // Handle network errors (no internet, DNS failure, etc.)
     if (error instanceof TypeError) {
+      // Check if it's likely an offline error
+      const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
       throw new APIError(
         0,
         'NETWORK_ERROR',
-        'Network error. Please check your connection.'
+        isOffline 
+          ? 'You appear to be offline. Please check your internet connection.'
+          : 'Unable to connect to the server. Please check your connection.'
       );
     }
     

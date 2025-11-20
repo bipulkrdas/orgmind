@@ -22,10 +22,6 @@ export default function GraphDetailPage() {
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [showVisualizerModal, setShowVisualizerModal] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string>('');
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
-  const [showChat, setShowChat] = useState(true);
-  const [chatError, setChatError] = useState<string | null>(null);
-  const [chatLoading, setChatLoading] = useState(false);
 
   useEffect(() => {
     // Get current user ID from JWT token
@@ -87,21 +83,6 @@ export default function GraphDetailPage() {
 
   const handleManageMembers = () => {
     setShowMembersModal(true);
-  };
-
-  const handleThreadCreate = (threadId: string) => {
-    setActiveThreadId(threadId);
-  };
-
-  const handleChatRetry = () => {
-    setChatError(null);
-    setChatLoading(true);
-    // Force re-render of ChatInterface by toggling showChat
-    setShowChat(false);
-    setTimeout(() => {
-      setShowChat(true);
-      setChatLoading(false);
-    }, 100);
   };
 
   if (loading) {
@@ -192,61 +173,13 @@ export default function GraphDetailPage() {
         onManageMembers={handleManageMembers}
         onViewGraph={() => setShowVisualizerModal(true)}
         chatComponent={
-          chatLoading ? (
-            // Chat Loading State
-            <div className="flex flex-col items-center justify-center h-full bg-white rounded-lg shadow p-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-              <p className="text-gray-600 text-sm">Loading chat...</p>
-            </div>
-          ) : chatError ? (
-            // Chat Error State
-            <div className="flex flex-col items-center justify-center h-full bg-white rounded-lg shadow p-8">
-              <svg
-                className="h-12 w-12 text-red-400 mb-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to Load Chat</h3>
-              <p className="text-sm text-gray-500 mb-4 text-center max-w-md">{chatError}</p>
-              <button
-                onClick={handleChatRetry}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 min-h-[44px]"
-              >
-                <svg
-                  className="h-5 w-5 mr-2"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-                Retry
-              </button>
-            </div>
-          ) : showChat ? (
-            // Chat Interface
-            // WORKAROUND: Pass ready={!loading} to prevent chat from initializing
-            // until graph data is loaded, avoiding Neon DB prepared statement race conditions
-            <ChatInterface
-              graphId={graphId}
-              threadId={activeThreadId}
-              onThreadCreate={handleThreadCreate}
-              ready={!loading}
-            />
-          ) : null
+          // Chat Interface
+          // WORKAROUND: Pass ready={!loading} to prevent chat from initializing
+          // until graph data is loaded, avoiding Neon DB prepared statement race conditions
+          <ChatInterface
+            graphId={graphId}
+            ready={!loading}
+          />
         }
       />
 

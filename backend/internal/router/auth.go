@@ -46,6 +46,7 @@ func (r *Router) setupAuthenticatedRoutes(router *gin.Engine) {
 		chat := graphs.Group("/:id/chat")
 		{
 			// Thread management
+			chat.GET("/threads", r.chatHandler.ListThreads)
 			chat.POST("/threads", r.chatHandler.CreateThread)
 			chat.GET("/threads/:threadId/messages", r.chatHandler.GetThreadMessages)
 			chat.POST("/threads/:threadId/messages", r.chatHandler.SendMessage)

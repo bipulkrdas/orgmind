@@ -6,8 +6,8 @@ CREATE TABLE graphs (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     document_count INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_graphs_creator_id ON graphs(creator_id);
@@ -19,7 +19,7 @@ CREATE TABLE graph_memberships (
     graph_id UUID NOT NULL REFERENCES graphs(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     role VARCHAR(50) DEFAULT 'member',
-    created_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(graph_id, user_id)
 );
 

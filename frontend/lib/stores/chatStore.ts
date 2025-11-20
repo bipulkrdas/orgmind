@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ChatMessage } from '../types';
+import { ChatMessage, ChatThread } from '../types';
 
 /**
  * Chat Store Interface
@@ -13,11 +13,22 @@ export interface ChatStore {
   isLoading: boolean;
   error: string | null;
 
+  // Thread list state
+  threads: ChatThread[];
+  selectedThreadId: string | null;
+
   // Thread actions
   setActiveThread: (threadId: string) => void;
 
+  // Thread list actions
+  setThreads: (threads: ChatThread[]) => void;
+  addThread: (thread: ChatThread) => void;
+  selectThread: (threadId: string | null) => void;
+  updateThreadTimestamp: (threadId: string) => void;
+
   // Message actions
   addMessage: (threadId: string, message: ChatMessage) => void;
+  setMessages: (threadId: string, messages: ChatMessage[]) => void;
   updateStreamingMessage: (content: string) => void;
   finalizeStreamingMessage: () => void;
 
@@ -39,6 +50,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   isLoading: false,
   error: null,
 
+  // Thread list state
+  threads: [],
+  selectedThreadId: null,
+
   // Thread actions
   setActiveThread: (threadId: string) => {
     set({ 
@@ -48,12 +63,68 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     });
   },
 
+  // Thread list actions
+  setThreads: (threads: ChatThread[]) => {
+    set({ threads });
+  },
+
+  addThread: (thread: ChatThread) => {
+    set((state) => ({
+      threads: [thread, ...state.threads] // Add to top
+    }));
+  },
+
+  selectThread: (threadId: string | null) => {
+    set({ 
+      selectedThreadId: threadId,
+      activeThreadId: threadId,
+      streamingMessage: null,
+      error: null 
+    });
+  },
+
+  updateThreadTimestamp: (threadId: string) => {
+    set((state) => ({
+      threads: state.threads
+        .map(t => 
+          t.id === threadId 
+            ? { ...t, updatedAt: new Date().toISOString() }
+            : t
+        )
+        .sort((a, b) => 
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        )
+    }));
+  },
+
   // Message actions
   addMessage: (threadId: string, message: ChatMessage) => {
     set((state) => {
       const newMessages = new Map(state.messages);
       const threadMessages = newMessages.get(threadId) || [];
-      newMessages.set(threadId, [...threadMessages, message]);
+      
+      // Check if message with this ID already exists to prevent duplicates
+      const existingIndex = threadMessages.findIndex(m => m.id === message.id);
+      
+      if (existingIndex >= 0) {
+        // Update existing message instead of adding duplicate
+        const updatedMessages = [...threadMessages];
+        updatedMessages[existingIndex] = message;
+        newMessages.set(threadId, updatedMessages);
+      } else {
+        // Add new message
+        newMessages.set(threadId, [...threadMessages, message]);
+      }
+      
+      return { messages: newMessages };
+    });
+  },
+
+  setMessages: (threadId: string, messages: ChatMessage[]) => {
+    set((state) => {
+      const newMessages = new Map(state.messages);
+      // Replace all messages for this thread (used when loading from API)
+      newMessages.set(threadId, messages);
       return { messages: newMessages };
     });
   },
@@ -114,3 +185,9 @@ export const selectError = (state: ChatStore): string | null => state.error;
 // Get active thread ID
 export const selectActiveThreadId = (state: ChatStore): string | null => 
   state.activeThreadId;
+
+// Thread list selectors
+export const selectThreads = (state: ChatStore): ChatThread[] => state.threads;
+
+export const selectSelectedThreadId = (state: ChatStore): string | null => 
+  state.selectedThreadId;

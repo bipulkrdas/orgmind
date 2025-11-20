@@ -3,6 +3,30 @@ import { getJWTToken } from '../auth/jwt';
 import type { ChatThread, ChatMessage, StreamEvent } from '../types';
 
 /**
+ * List all threads for a graph
+ * Implements defensive response parsing to handle multiple response formats
+ */
+export async function listThreads(graphId: string): Promise<ChatThread[]> {
+  const response = await apiCall<ChatThread[] | { threads: ChatThread[] }>(
+    `/api/graphs/${graphId}/chat/threads`,
+    { method: 'GET' }
+  );
+
+  // Defensive: Handle direct array response
+  if (Array.isArray(response)) {
+    return response;
+  }
+
+  // Defensive: Handle wrapped response format
+  if (response && typeof response === 'object' && 'threads' in response) {
+    return Array.isArray(response.threads) ? response.threads : [];
+  }
+
+  // Fallback to empty array
+  return [];
+}
+
+/**
  * Create a new chat thread for a graph
  */
 export async function createThread(graphId: string): Promise<ChatThread> {

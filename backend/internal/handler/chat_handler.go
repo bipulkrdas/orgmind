@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/bipulkrdas/orgmind/backend/internal/middleware"
 	"github.com/bipulkrdas/orgmind/backend/internal/models"
@@ -63,6 +64,50 @@ type MessagesResponse struct {
 	HasMore  bool                  `json:"hasMore"`
 }
 
+// ListThreads handles GET /api/graphs/:id/chat/threads
+func (h *ChatHandler) ListThreads(c *gin.Context) {
+	// Extract userID from JWT token (set by auth middleware)
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in token"})
+		return
+	}
+
+	// Get graph ID from URL parameter
+	graphID := c.Param("id")
+	if graphID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Graph ID is required"})
+		return
+	}
+
+	// List threads for the graph
+	threads, err := h.chatService.ListThreads(c.Request.Context(), graphID, userID)
+	if err != nil {
+		if errors.Is(err, service.ErrNotGraphMember) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "You don't have access to this graph"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list threads", "details": err.Error()})
+		return
+	}
+
+	// Convert to response format
+	response := make([]ChatThreadResponse, len(threads))
+	for i, thread := range threads {
+		response[i] = ChatThreadResponse{
+			ID:        thread.ID,
+			GraphID:   thread.GraphID,
+			UserID:    thread.UserID,
+			Summary:   thread.Summary,
+			CreatedAt: thread.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt: thread.UpdatedAt.UTC().Format(time.RFC3339),
+		}
+	}
+
+	// Return threads array directly (not wrapped)
+	c.JSON(http.StatusOK, response)
+}
+
 // CreateThread handles POST /api/graphs/:id/chat/threads
 func (h *ChatHandler) CreateThread(c *gin.Context) {
 	// Extract userID from JWT token (set by auth middleware)
@@ -111,8 +156,8 @@ func (h *ChatHandler) CreateThread(c *gin.Context) {
 		GraphID:   thread.GraphID,
 		UserID:    thread.UserID,
 		Summary:   thread.Summary,
-		CreatedAt: thread.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: thread.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		CreatedAt: thread.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt: thread.UpdatedAt.UTC().Format(time.RFC3339),
 	})
 }
 
@@ -191,7 +236,7 @@ func (h *ChatHandler) GetThreadMessages(c *gin.Context) {
 			ThreadID:  msg.ThreadID,
 			Role:      msg.Role,
 			Content:   msg.Content,
-			CreatedAt: msg.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			CreatedAt: msg.CreatedAt.UTC().Format(time.RFC3339),
 		}
 	}
 
@@ -532,8 +577,8 @@ func convertThreadToResponse(thread *models.ChatThread) ChatThreadResponse {
 		GraphID:   thread.GraphID,
 		UserID:    thread.UserID,
 		Summary:   thread.Summary,
-		CreatedAt: thread.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: thread.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		CreatedAt: thread.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt: thread.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 }
 
@@ -544,7 +589,7 @@ func convertMessageToResponse(message *models.ChatMessage) ChatMessageResponse {
 		ThreadID:  message.ThreadID,
 		Role:      message.Role,
 		Content:   message.Content,
-		CreatedAt: message.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		CreatedAt: message.CreatedAt.UTC().Format(time.RFC3339),
 	}
 }
 
