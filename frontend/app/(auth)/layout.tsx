@@ -93,16 +93,6 @@ export default function AuthLayout({
                 >
                   Home
                 </Link>
-                <Link
-                  href="/graphs/me"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition ${
-                    pathname?.startsWith('/graphs')
-                      ? 'text-indigo-600 bg-indigo-50'
-                      : 'text-gray-700 hover:text-indigo-600 hover:bg-gray-50'
-                  }`}
-                >
-                  Knowledge Graph
-                </Link>
               </div>
             </div>
 
@@ -162,14 +152,6 @@ export default function AuthLayout({
                         onClick={() => setIsUserMenuOpen(false)}
                       >
                         Home
-                      </Link>
-                      <Link
-                        href="/graphs/me"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 md:hidden"
-                        role="menuitem"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        Knowledge Graph
                       </Link>
                       <div className="border-t border-gray-100 md:hidden"></div>
                       <button

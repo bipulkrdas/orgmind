@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   keywords: ['document processing', 'knowledge graph', 'AI', 'enterprise', 'document management'],
   authors: [{ name: 'OrgMind' }],
   icons: {
-    icon: '/favicon.ico',
+    icon: './icon.png',
   },
 };
 

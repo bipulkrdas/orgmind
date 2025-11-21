@@ -260,15 +260,17 @@ func (s *geminiService) GenerateStreamingResponse(ctx context.Context, storeID, 
 
 	// Construct filter: (chunk.custom_metadata.graph_id = "{graphID}" AND chunk.custom_metadata.domain = "{domain}" AND chunk.custom_metadata.version = "{version}")
 	metadataFilter := fmt.Sprintf(
-		`(chunk.custom_metadata.graph_id = "%s" AND chunk.custom_metadata.domain = "%s" AND chunk.custom_metadata.version = "%s")`,
+		`(graph_id = "%s" AND domain = "%s" AND version = "%s")`,
 		escapedGraphID, escapedDomain, escapedVersion,
 	)
 
 	// Validate filter syntax (basic check)
-	if err := validateFilterSyntax(metadataFilter); err != nil {
-		log.Printf("[Gemini] Query Filtering: ERROR - Invalid metadata filter syntax for graph '%s': %v", graphID, err)
-		return fmt.Errorf("invalid metadata filter: %w", err)
-	}
+	/*
+		if err := validateFilterSyntax(metadataFilter); err != nil {
+			log.Printf("[Gemini] Query Filtering: ERROR - Invalid metadata filter syntax for graph '%s': %v", graphID, err)
+			return fmt.Errorf("invalid metadata filter: %w", err)
+		}
+	*/
 
 	// Log metadata filter expression used
 	log.Printf("[Gemini] Query Filtering: Using metadata filter expression: %s", metadataFilter)

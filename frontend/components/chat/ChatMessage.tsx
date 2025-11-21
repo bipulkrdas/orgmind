@@ -19,13 +19,13 @@ export function ChatMessage({ message }: ChatMessageProps) {
       role="article"
       aria-label={`${isUser ? 'Your' : 'Assistant'} message`}
     >
-      <div className={`flex flex-col max-w-[75%] sm:max-w-[70%] ${isUser ? 'items-end' : 'items-start'}`}>
+      <div className={`flex flex-col ${isUser ? 'max-w-[75%] sm:max-w-[70%] items-end' : 'w-full items-start'}`}>
         {/* Message Bubble */}
         <div
           className={`px-4 py-3 rounded-2xl transition-all duration-200 ${
             isUser
               ? 'bg-blue-600 text-white rounded-br-sm shadow-md hover:shadow-lg'
-              : 'bg-gray-100 text-gray-900 rounded-bl-sm shadow-sm hover:shadow-md'
+              : 'bg-gray-100 text-gray-900 rounded-bl-sm shadow-sm hover:shadow-md w-full'
           }`}
         >
           {isUser ? (

@@ -76,13 +76,13 @@ export function ChatMessageList({ messages, isLoading, streamingMessage }: ChatM
       {/* Show streaming message with typing indicator */}
       {streamingMessage !== null && (
         <div className="flex justify-start animate-fadeIn">
-          <div className="flex flex-col max-w-[75%] sm:max-w-[70%] items-start">
+          <div className="flex flex-col w-full items-start">
             {streamingMessage === '' ? (
               // Show typing indicator when streaming just started
               <TypingIndicator />
             ) : (
               // Show streaming content
-              <div className="px-3 py-2 rounded-2xl bg-gray-100 text-gray-900 rounded-bl-sm shadow-sm">
+              <div className="px-3 py-2 rounded-2xl bg-gray-100 text-gray-900 rounded-bl-sm shadow-sm w-full">
                 <div className="text-sm whitespace-pre-wrap break-words prose prose-sm max-w-none leading-relaxed">
                   {streamingMessage}
                   <span className="inline-block w-0.5 h-4 bg-gray-600 ml-1 animate-pulse"></span>

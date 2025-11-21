@@ -77,10 +77,10 @@ export function GraphDetail({
         </div>
       </div>
 
-      {/* Two-Column Layout: Documents (40%) + Chat (60%) on desktop, stacked on mobile */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-        {/* Documents Column - 40% width on desktop (2/5 columns), full width on mobile */}
-        <div className="md:col-span-2 order-1 md:order-1">
+      {/* Two-Column Layout: Documents (25%) + Chat (75%) on desktop, stacked on mobile */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        {/* Documents Column - 25% width on desktop (1/4 columns), full width on mobile */}
+        <div className="md:col-span-1 order-1 md:order-1">
           <div className="bg-white rounded-lg shadow h-full flex flex-col">
             <div className="px-4 py-2 border-b border-gray-200 flex-shrink-0">
               <h2 className="text-sm font-semibold text-gray-900">Documents</h2>
@@ -174,7 +174,7 @@ export function GraphDetail({
           </div>
         </div>
 
-        {/* Chat Column - 60% width on desktop (3/5 columns), full width on mobile */}
+        {/* Chat Column - 75% width on desktop (3/4 columns), full width on mobile */}
         <div className="md:col-span-3 order-2 md:order-2">
           <div className="h-full" style={{ height: 'calc(100vh - 200px)', minHeight: '500px' }}>
             {chatComponent}
