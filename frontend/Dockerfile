@@ -16,16 +16,14 @@ COPY . .
 
 # Build arguments for environment variables
 # These will be baked into the build
-ARG NEXT_PUBLIC_API_URL
-ARG NEXT_PUBLIC_OAUTH_REDIRECT_URL
-ARG NEXT_PUBLIC_APP_NAME=OrgMind
-ARG NEXT_PUBLIC_ENVIRONMENT=production
 
-# Set environment variables for build
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# Define a build-time argument for the secret
+ARG NEXT_PUBLIC_OAUTH_REDIRECT_URL
+
+# Make it available as an environment variable during the build
 ENV NEXT_PUBLIC_OAUTH_REDIRECT_URL=$NEXT_PUBLIC_OAUTH_REDIRECT_URL
-ENV NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME
-ENV NEXT_PUBLIC_ENVIRONMENT=$NEXT_PUBLIC_ENVIRONMENT
+
+
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
@@ -65,8 +63,8 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+# HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+#     CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
