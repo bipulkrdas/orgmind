@@ -1,12 +1,48 @@
 import { getJWTToken, clearJWTToken } from '../auth/jwt';
 import type { ErrorResponse } from '../types';
 
-// Get API base URL from environment variable
-// In Next.js, NEXT_PUBLIC_ prefixed variables are available in the browser
-// Using globalThis to access process.env in a type-safe way
-export const API_BASE_URL = 
-  (typeof globalThis !== 'undefined' && (globalThis as any).process?.env?.NEXT_PUBLIC_API_URL) || 
-  'http://localhost:8080';
+// Get API base URL
+// In production, use the backend service URL from environment variable
+// In development, use localhost
+/*
+function getApiBaseUrl(): string {
+  // If explicitly set via environment variable (build time), use it
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  
+  // In browser, check if we're in production
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    
+    // If running on Cloud Run or production domain
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      // Replace 'orgmind-frontend' with 'orgmind-backend' in the hostname
+      // This works for Cloud Run URLs like: orgmind-frontend-xxx.run.app -> orgmind-backend-xxx.run.app
+      const backendHostname = hostname.replace('orgmind-frontend', 'orgmind-backend');
+      return `${window.location.protocol}//${backendHostname}`;
+    }
+  }
+  
+  // Default to localhost for development
+  return 'http://localhost:8080';
+}
+  */
+
+export const getApiBaseUrl = (): string => {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  // Production: Use the full URL from environment variables.
+  // The NEXT_PUBLIC_API_URL should be the base URL of the backend (e.g., https://api.example.com)
+  if (process.env.NODE_ENV === 'production' && apiUrl) {
+    return `${apiUrl}`;
+  }
+
+  // Development: Use a relative path for the Next.js proxy.
+  return ``;
+};
+
+export const API_BASE_URL = getApiBaseUrl();
 
 /**
  * Custom API Error class for structured error handling
