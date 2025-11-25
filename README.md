@@ -17,3 +17,9 @@ OrgMind is an enterprise-grade document processing platform that transforms docu
 - **Role-Based Access**: Graph creators can manage member permissions
 - **Password Reset**: Secure token-based password recovery
 
+## License
+
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0) - see the [LICENSE](LICENSE) file for details.
+
+The AGPL-3.0 is a strong copyleft license that requires anyone who runs a modified version of this software as a service to make the source code available to users of that service.
+
